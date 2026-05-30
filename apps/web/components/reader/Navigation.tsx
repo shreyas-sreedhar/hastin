@@ -25,6 +25,14 @@ export function Navigation({
         </Link>
         <h1 className="mt-2 text-lg font-serif text-stone-900">{documentTitle}</h1>
         <p className="mt-1 text-xs text-stone-500">{pages.length} pages indexed</p>
+        <div className="mt-4 flex gap-3 text-xs font-sans">
+          <Link
+            href="/about/data"
+            className="text-stone-500 hover:text-stone-800 underline decoration-stone-300 hover:decoration-stone-600 transition-all duration-[120ms] ease-out"
+          >
+            Data & Exports
+          </Link>
+        </div>
       </div>
       <ol className="py-2">
         {pages.map((p) => {
