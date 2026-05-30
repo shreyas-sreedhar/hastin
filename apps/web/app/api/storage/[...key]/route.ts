@@ -42,8 +42,45 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { key: string[] } },
 ) {
-  // Reconstruct the key and refuse anything trying to escape STORAGE_ROOT.
+  // Reconstruct the key
   const key = params.key.join("/");
+  const ext = key.slice(key.lastIndexOf(".")).toLowerCase();
+  const mime = MIME[ext] ?? "application/octet-stream";
+
+  // Support Cloudflare R2 in production
+  if (process.env.STORAGE_BACKEND === "r2") {
+    const r2PublicUrl = process.env.R2_PUBLIC_URL;
+    if (!r2PublicUrl) {
+      return NextResponse.json(
+        { error: "R2_PUBLIC_URL is not configured" },
+        { status: 500 },
+      );
+    }
+
+    try {
+      const url = `${r2PublicUrl}/${key}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        return NextResponse.json({ error: "not found in R2" }, { status: 404 });
+      }
+
+      const data = await res.arrayBuffer();
+      return new NextResponse(new Uint8Array(data), {
+        headers: {
+          "content-type": res.headers.get("content-type") ?? mime,
+          "cache-control": "public, max-age=31536000, immutable",
+        },
+      });
+    } catch (err) {
+      console.error("R2 storage fetch error:", err);
+      return NextResponse.json(
+        { error: "failed to retrieve file from R2" },
+        { status: 500 },
+      );
+    }
+  }
+
+  // Refuse anything trying to escape STORAGE_ROOT
   const absolute = resolve(STORAGE_ROOT, key);
   if (!absolute.startsWith(STORAGE_ROOT + "/") && absolute !== STORAGE_ROOT) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -59,8 +96,6 @@ export async function GET(
   }
 
   const data = await readFile(absolute);
-  const ext = absolute.slice(absolute.lastIndexOf(".")).toLowerCase();
-  const mime = MIME[ext] ?? "application/octet-stream";
 
   return new NextResponse(new Uint8Array(data), {
     headers: {
