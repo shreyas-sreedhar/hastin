@@ -9,8 +9,8 @@ __pycache__/
 docs/
 *.mddocs/
 
-logs/
-storage/
+/logs/
+/storage/
 
 node_modules/
 .next/
