@@ -20,8 +20,14 @@ VALID_BLOCK_TYPES = {"verse", "prose", "heading", "footnote", "image"}
 # Sarvam layout_tags we explicitly drop (running page chrome, not content)
 SKIP_TAGS = {"header", "page-number"}
 
+import re
+
 # Double danda — Sanskrit verse delimiter
 VERSE_MARKER = "॥"  # ॥
+
+# A numbered shloka closer: ॥ <devanagari or ascii digits> ॥
+# Devanagari digits live in U+0966..U+096F.
+_NUMBERED_VERSE = re.compile(r"॥\s*[०-९0-9]+\s*॥")
 
 
 @dataclass(frozen=True)
@@ -34,7 +40,17 @@ class DetectedBlock:
 
 
 def _classify_paragraph(text: str) -> str:
-    return "verse" if VERSE_MARKER in text else "prose"
+    """verse iff the text has 2+ '॥' or a numbered shloka closer.
+
+    A single trailing '॥' commonly closes a prose passage, so it's not
+    by itself evidence of metric verse. Multi-line shlokas have one '॥'
+    per half-verse (and usually a numeric tag like '॥ १९७ ॥').
+    """
+    if _NUMBERED_VERSE.search(text):
+        return "verse"
+    if text.count(VERSE_MARKER) >= 2:
+        return "verse"
+    return "prose"
 
 
 def _map_tag(layout_tag: str, text: str) -> str | None:
@@ -64,8 +80,13 @@ class BlockDetector:
 
     ORDER_STRIDE = 1000
 
-    def detect(self, raw_response: dict) -> Iterator[DetectedBlock]:
-        page_number = int(raw_response.get("page_num") or 0)
+    def detect(self, page_number: int, raw_response: dict) -> Iterator[DetectedBlock]:
+        """Yield blocks for `page_number`.
+
+        page_number is supplied by the caller (from the pages table) rather
+        than read from raw_response, because Sarvam stamps its payload with
+        a batch-local index that may not equal the document page number.
+        """
         if page_number <= 0:
             return
         blocks: Iterable[dict] = raw_response.get("blocks") or []
@@ -101,10 +122,10 @@ if __name__ == "__main__":
             {"layout_tag": "section-title", "text": "इत्यसंसक्तानाहः ॥",
              "reading_order": 3, "block_id": "s"},
             {"layout_tag": "paragraph",
-             "text": "स्वप्नाज्जागरणाच्चैव ॥ १९७ ॥",
+             "text": "स्वप्नाज्जागरणाच्चैव न व्याधिरुपजायते ॥\nतेऽरण्याद्ग्राममानीता भयशोकसमन्विताः ॥ १९७ ॥",
              "reading_order": 4, "block_id": "v"},
             {"layout_tag": "paragraph",
-             "text": "स परिणाहविहृद्देर्भवत्युपल इव घनच्छविः ।",
+             "text": "इत्येवमपक्कस्य ग्रन्थेर्लक्षणम् ॥",
              "reading_order": 5, "block_id": "p"},
             {"layout_tag": "footnote", "text": "१ क. विषाञ्जनस्य ।",
              "reading_order": 6, "block_id": "fn"},
@@ -117,7 +138,7 @@ if __name__ == "__main__":
         ],
     }
     detector = BlockDetector()
-    out = list(detector.detect(sample))
+    out = list(detector.detect(sample["page_num"], sample))
     expected = ["heading", "verse", "prose", "footnote", "footnote", "image"]
     got = [b.block_type for b in out]
     assert got == expected, f"got {got} expected {expected}"
