@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from ._lib_root import REPO_ROOT  # noqa: F401  (kept for future R2 paths)
+from ._lib_root import REPO_ROOT
 
 
 def backend() -> str:
@@ -9,7 +9,10 @@ def backend() -> str:
 
 
 def local_root() -> Path:
-    return Path(os.environ.get("LOCAL_STORAGE_ROOT", "storage")).resolve()
+    override = os.environ.get("LOCAL_STORAGE_ROOT")
+    if override:
+        return Path(override).resolve()
+    return REPO_ROOT / "storage"
 
 
 def write_bytes(key: str, data: bytes) -> tuple[str, str]:
