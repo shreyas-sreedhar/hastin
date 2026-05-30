@@ -50,6 +50,8 @@ def main() -> int:
     ap.add_argument("--pdf", type=Path, default=DEFAULT_PDF)
     ap.add_argument("--title", default=DEFAULT_TITLE)
     ap.add_argument("--limit", type=int, default=None, help="cap pages (for testing)")
+    ap.add_argument("--pages", default=None,
+                    help="comma-separated 1-based page numbers (overrides --limit)")
     args = ap.parse_args()
 
     if not args.pdf.exists():
@@ -67,14 +69,21 @@ def main() -> int:
             done = existing_page_numbers(cur, document_id)
             log.info("document_id=%s already-extracted=%d", document_id, len(done))
 
-            target_count = args.limit if args.limit is not None else total
+            if args.pages:
+                targets = [int(s) for s in args.pages.split(",") if s.strip()]
+            else:
+                target_count = args.limit if args.limit is not None else total
+                targets = list(range(1, target_count + 1))
+
             new_count = 0
 
-            for i in range(target_count):
-                page_number = i + 1  # 1-indexed
+            for page_number in targets:
+                if page_number < 1 or page_number > total:
+                    log.warning("skipping out-of-range page %d", page_number)
+                    continue
                 if page_number in done:
                     continue
-                png, w, h = render_page(doc[i])
+                png, w, h = render_page(doc[page_number - 1])
                 key = f"pages/{document_id}/{page_number:04d}.png"
                 backend, stored_key = write_bytes(key, png)
                 cur.execute(
@@ -89,7 +98,7 @@ def main() -> int:
                 if new_count % 25 == 0:
                     log.info("rendered %d pages", new_count)
 
-            log.info("done. new_pages=%d total_target=%d", new_count, target_count)
+            log.info("done. new_pages=%d total_target=%d", new_count, len(targets))
 
     return 0
 

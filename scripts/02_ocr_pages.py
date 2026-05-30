@@ -36,20 +36,24 @@ DEFAULT_LANGUAGE = "sa-IN"
 PROVIDER = "sarvam"
 
 
-def pending_pages(cur, document_id: str, limit: int | None) -> list[tuple]:
+def pending_pages(cur, document_id: str, limit: int | None,
+                  only: list[int] | None) -> list[tuple]:
     sql = """
         SELECT p.id, p.page_number, p.storage_backend, p.storage_key
         FROM pages p
         LEFT JOIN ocr_pages o ON o.page_id = p.id
         WHERE p.document_id = %s
           AND (o.id IS NULL OR o.status = 'failed')
-        ORDER BY p.page_number
     """
-    params: tuple = (document_id,)
+    params: list = [document_id]
+    if only is not None:
+        sql += " AND p.page_number = ANY(%s)"
+        params.append(only)
+    sql += " ORDER BY p.page_number"
     if limit is not None:
         sql += " LIMIT %s"
-        params = (document_id, limit)
-    cur.execute(sql, params)
+        params.append(limit)
+    cur.execute(sql, tuple(params))
     return cur.fetchall()
 
 
@@ -196,8 +200,11 @@ def main() -> int:
     ap.add_argument("--max-retries", type=int, default=DEFAULT_MAX_RETRIES)
     ap.add_argument("--language", default=DEFAULT_LANGUAGE)
     ap.add_argument("--limit", type=int, default=None, help="cap total pages this run")
+    ap.add_argument("--pages", default=None,
+                    help="comma-separated 1-based page numbers to OCR")
     ap.add_argument("--sleep-between-batches", type=float, default=5.0)
     args = ap.parse_args()
+    only_pages = [int(s) for s in args.pages.split(",") if s.strip()] if args.pages else None
 
     api_key = os.environ.get("SARVAM_API_KEY")
     if not api_key:
@@ -208,7 +215,7 @@ def main() -> int:
     with connect() as conn:
         with conn.cursor() as cur:
             document_id = get_document_id(cur, args.title)
-            pending = pending_pages(cur, document_id, args.limit)
+            pending = pending_pages(cur, document_id, args.limit, only_pages)
     log.info("document_id=%s pending=%d", document_id, len(pending))
 
     if not pending:
