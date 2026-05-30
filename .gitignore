@@ -1,0 +1,7 @@
+hastyayurveda.pdf
+benchmark_output/
+*.zip
+venv/
+.env
+__pycache__/
+*.pyc
