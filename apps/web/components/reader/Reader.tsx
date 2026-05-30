@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 
 import { cardListVariants, cardVariants } from "@/lib/motion";
@@ -33,6 +34,20 @@ export function Reader({
 }) {
   const [showIast, setShowIast] = useState(false);
   const [showEnglish, setShowEnglish] = useState(true);
+  const searchParams = useSearchParams();
+  const highlightedId = searchParams.get("highlight");
+
+  useEffect(() => {
+    if (highlightedId) {
+      const element = document.getElementById(`block-${highlightedId}`);
+      if (element) {
+        const timer = setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [highlightedId, pageNumber]);
 
   return (
     <section className="h-full overflow-y-auto">
@@ -84,12 +99,20 @@ export function Reader({
             initial="hidden"
             animate="visible"
           >
-            {blocks.map((b) => (
-              <motion.li
-                key={b.id}
-                variants={cardVariants}
-                className="border-l-2 border-stone-200 pl-5"
-              >
+            {blocks.map((b) => {
+              const isHighlighted = highlightedId === b.id;
+              return (
+                <motion.li
+                  key={b.id}
+                  id={`block-${b.id}`}
+                  variants={cardVariants}
+                  className={[
+                    "border-l-2 pl-5 transition-all duration-[400ms] ease-out rounded-r-md py-2 pr-4",
+                    isHighlighted
+                      ? "border-amber-600 bg-amber-50/40 shadow-sm ring-1 ring-amber-200/20"
+                      : "border-stone-200 hover:border-stone-400"
+                  ].join(" ")}
+                >
                 <div className="text-[11px] uppercase tracking-widest text-stone-400 mb-2">
                   {TYPE_LABEL[b.block_type] ?? b.block_type}
                 </div>
@@ -116,7 +139,7 @@ export function Reader({
                   </div>
                 )}
               </motion.li>
-            ))}
+            );})}
           </motion.ol>
         )}
       </div>
