@@ -4,6 +4,7 @@ import { getDb } from "@hastin/db";
 import { Navigation, type NavPage } from "@/components/reader/Navigation";
 import { Reader, type ReaderBlock } from "@/components/reader/Reader";
 import { Source, type SourcePageMeta } from "@/components/reader/Source";
+import { Panel } from "@/components/motion/Panel";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,10 @@ export default async function ReadPage({ params }: { params: Params }) {
   if (!data) notFound();
 
   return (
-    <div className="h-screen grid grid-cols-1 md:grid-cols-[280px_1fr_360px]">
+    <Panel
+      key={`${documentTitle}-${pageNumber}`}
+      className="h-screen grid grid-cols-1 md:grid-cols-[280px_1fr_360px]"
+    >
       <Navigation
         documentTitle={documentTitle}
         pages={data.nav}
@@ -87,6 +91,6 @@ export default async function ReadPage({ params }: { params: Params }) {
         blocks={data.blocks}
       />
       <Source pageNumber={pageNumber} meta={data.meta} />
-    </div>
+    </Panel>
   );
 }

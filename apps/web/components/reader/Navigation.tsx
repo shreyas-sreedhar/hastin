@@ -32,9 +32,11 @@ export function Navigation({
           return (
             <li key={p.page_number}>
               <Link
-                href={`/read/${encodeURIComponent(documentTitle)}/${p.page_number}`}
+                href={`/read/${documentTitle}/${p.page_number}`}
                 className={[
                   "flex items-baseline justify-between px-5 py-2 text-sm",
+                  // 120ms ease-out hover, per the motion spec.
+                  "transition-colors duration-[120ms] ease-out",
                   active
                     ? "bg-stone-200 text-stone-900 font-medium"
                     : "text-stone-700 hover:bg-stone-100",

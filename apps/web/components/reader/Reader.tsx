@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
+
+import { cardListVariants, cardVariants } from "@/lib/motion";
 
 export type ReaderBlock = {
   id: string;
@@ -74,9 +77,19 @@ export function Reader({
             This page hasn’t been OCR’d or block-detected yet.
           </p>
         ) : (
-          <ol className="space-y-8">
+          <motion.ol
+            key={`${documentTitle}-${pageNumber}`}
+            className="space-y-8"
+            variants={cardListVariants}
+            initial="hidden"
+            animate="visible"
+          >
             {blocks.map((b) => (
-              <li key={b.id} className="border-l-2 border-stone-200 pl-5">
+              <motion.li
+                key={b.id}
+                variants={cardVariants}
+                className="border-l-2 border-stone-200 pl-5"
+              >
                 <div className="text-[11px] uppercase tracking-widest text-stone-400 mb-2">
                   {TYPE_LABEL[b.block_type] ?? b.block_type}
                 </div>
@@ -102,9 +115,9 @@ export function Reader({
                     No translation yet.
                   </div>
                 )}
-              </li>
+              </motion.li>
             ))}
-          </ol>
+          </motion.ol>
         )}
       </div>
     </section>
