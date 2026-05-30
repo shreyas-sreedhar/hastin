@@ -11,3 +11,6 @@ docs/
 
 logs/
 storage/
+
+node_modules/
+.next/
